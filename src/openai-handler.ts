@@ -1072,21 +1072,78 @@ function writeOpenAISSE(res: Response, data: OpenAIChatCompletionChunk): void {
 // ==================== /v1/responses 支持 ====================
 
 /**
- * 处理 Cursor IDE Agent 模式的 /v1/responses 请求
+ * 写入 Responses API SSE 事件
+ * 格式：event: {eventType}\ndata: {json}\n\n
+ * 注意：与 Chat Completions 的 "data: {json}\n\n" 不同，Responses API 需要 event: 前缀
+ */
+function writeResponsesSSE(res: Response, eventType: string, data: Record<string, unknown>): void {
+    res.write(`event: ${eventType}\ndata: ${JSON.stringify(data)}\n\n`);
+    if (typeof (res as unknown as { flush: () => void }).flush === 'function') {
+        (res as unknown as { flush: () => void }).flush();
+    }
+}
+
+function responsesId(): string {
+    return 'resp_' + uuidv4().replace(/-/g, '').substring(0, 24);
+}
+
+function responsesItemId(): string {
+    return 'item_' + uuidv4().replace(/-/g, '').substring(0, 24);
+}
+
+/**
+ * 构建 Responses API 的 response 对象骨架
+ */
+function buildResponseObject(
+    id: string,
+    model: string,
+    status: 'in_progress' | 'completed',
+    output: Record<string, unknown>[],
+    usage?: { input_tokens: number; output_tokens: number; total_tokens: number },
+): Record<string, unknown> {
+    return {
+        id,
+        object: 'response',
+        created_at: Math.floor(Date.now() / 1000),
+        status,
+        model,
+        output,
+        ...(usage ? { usage } : {}),
+    };
+}
+
+/**
+ * 处理 OpenAI Codex / Responses API 的 /v1/responses 请求
  *
- * Cursor IDE 对 GPT 模型发送 OpenAI Responses API 格式请求，
- * 这里将其转换为 Chat Completions 格式后复用现有管道
+ * ★ 关键差异：Responses API 的流式格式与 Chat Completions 完全不同
+ * Codex 期望接收 event: response.created / response.output_text.delta / response.completed 等事件
+ * 而非 data: {"object":"chat.completion.chunk",...} 格式
  */
 export async function handleOpenAIResponses(req: Request, res: Response): Promise<void> {
     try {
         const body = req.body;
+        const isStream = (body.stream as boolean) ?? true;
 
-        // 将 Responses API 格式转换为 Chat Completions 格式
+        // Step 1: 转换请求格式 Responses → Chat Completions → Anthropic → Cursor
         const chatBody = responsesToChatCompletions(body);
+        const anthropicReq = convertToAnthropicRequest(chatBody);
+        const cursorReq = await convertToCursorRequest(anthropicReq);
 
-        // 此后复用现有管道
-        req.body = chatBody;
-        return handleOpenAIChatCompletions(req, res);
+        // 身份探针拦截
+        if (isIdentityProbe(anthropicReq)) {
+            const mockText = "I am Claude, an advanced AI programming assistant created by Anthropic. I am ready to help you write code, debug, and answer your technical questions.";
+            if (isStream) {
+                return handleResponsesStreamMock(res, body, mockText);
+            } else {
+                return handleResponsesNonStreamMock(res, body, mockText);
+            }
+        }
+
+        if (isStream) {
+            await handleResponsesStream(res, cursorReq, body, anthropicReq);
+        } else {
+            await handleResponsesNonStream(res, cursorReq, body, anthropicReq);
+        }
     } catch (err: unknown) {
         const message = err instanceof Error ? err.message : String(err);
         console.error(`[OpenAI] /v1/responses 处理失败:`, message);
@@ -1094,6 +1151,448 @@ export async function handleOpenAIResponses(req: Request, res: Response): Promis
             error: { message, type: 'server_error', code: 'internal_error' },
         });
     }
+}
+
+/**
+ * 模拟身份响应 — 流式 (Responses API SSE 格式)
+ */
+function handleResponsesStreamMock(res: Response, body: Record<string, unknown>, mockText: string): void {
+    res.writeHead(200, {
+        'Content-Type': 'text/event-stream',
+        'Cache-Control': 'no-cache',
+        'Connection': 'keep-alive',
+        'X-Accel-Buffering': 'no',
+    });
+
+    const respId = responsesId();
+    const itemId = responsesItemId();
+    const model = (body.model as string) || 'gpt-4';
+
+    emitResponsesTextStream(res, respId, itemId, model, mockText, 0, { input_tokens: 15, output_tokens: 35, total_tokens: 50 });
+    res.end();
+}
+
+/**
+ * 模拟身份响应 — 非流式 (Responses API JSON 格式)
+ */
+function handleResponsesNonStreamMock(res: Response, body: Record<string, unknown>, mockText: string): void {
+    const respId = responsesId();
+    const itemId = responsesItemId();
+    const model = (body.model as string) || 'gpt-4';
+
+    res.json(buildResponseObject(respId, model, 'completed', [{
+        id: itemId,
+        type: 'message',
+        role: 'assistant',
+        status: 'completed',
+        content: [{ type: 'output_text', text: mockText, annotations: [] }],
+    }], { input_tokens: 15, output_tokens: 35, total_tokens: 50 }));
+}
+
+/**
+ * 发射完整的 Responses API 文本流事件序列
+ * 包含从 response.created 到 response.completed 的完整生命周期
+ */
+function emitResponsesTextStream(
+    res: Response,
+    respId: string,
+    itemId: string,
+    model: string,
+    fullText: string,
+    outputIndex: number,
+    usage: { input_tokens: number; output_tokens: number; total_tokens: number },
+    toolCallItems?: Record<string, unknown>[],
+): void {
+    // 所有输出项（文本 + 工具调用）
+    const messageItem: Record<string, unknown> = {
+        id: itemId,
+        type: 'message',
+        role: 'assistant',
+        status: 'completed',
+        content: [{ type: 'output_text', text: fullText, annotations: [] }],
+    };
+    const allOutputItems = toolCallItems ? [...toolCallItems, messageItem] : [messageItem];
+
+    // 1. response.created
+    writeResponsesSSE(res, 'response.created', buildResponseObject(respId, model, 'in_progress', []));
+
+    // 2. response.in_progress
+    writeResponsesSSE(res, 'response.in_progress', buildResponseObject(respId, model, 'in_progress', []));
+
+    // 3. 文本 output item
+    writeResponsesSSE(res, 'response.output_item.added', {
+        output_index: outputIndex,
+        item: {
+            id: itemId,
+            type: 'message',
+            role: 'assistant',
+            status: 'in_progress',
+            content: [],
+        },
+    });
+
+    // 4. content part
+    writeResponsesSSE(res, 'response.content_part.added', {
+        output_index: outputIndex,
+        content_index: 0,
+        part: { type: 'output_text', text: '', annotations: [] },
+    });
+
+    // 5. 文本增量
+    if (fullText) {
+        // 分块发送，模拟流式体验 (每块约 100 字符)
+        const CHUNK_SIZE = 100;
+        for (let i = 0; i < fullText.length; i += CHUNK_SIZE) {
+            writeResponsesSSE(res, 'response.output_text.delta', {
+                output_index: outputIndex,
+                content_index: 0,
+                delta: fullText.slice(i, i + CHUNK_SIZE),
+            });
+        }
+    }
+
+    // 6. response.output_text.done
+    writeResponsesSSE(res, 'response.output_text.done', {
+        output_index: outputIndex,
+        content_index: 0,
+        text: fullText,
+    });
+
+    // 7. response.content_part.done
+    writeResponsesSSE(res, 'response.content_part.done', {
+        output_index: outputIndex,
+        content_index: 0,
+        part: { type: 'output_text', text: fullText, annotations: [] },
+    });
+
+    // 8. response.output_item.done (message)
+    writeResponsesSSE(res, 'response.output_item.done', {
+        output_index: outputIndex,
+        item: messageItem,
+    });
+
+    // 9. response.completed — ★ 这是 Codex 等待的关键事件
+    writeResponsesSSE(res, 'response.completed', buildResponseObject(respId, model, 'completed', allOutputItems, usage));
+}
+
+/**
+ * Responses API 流式处理
+ *
+ * ★ 与 Chat Completions 流式的核心区别：
+ * 1. 使用 event: 前缀的 SSE 事件（不是 data-only）
+ * 2. 必须发送 response.completed 事件，否则 Codex 报 "stream closed before response.completed"
+ * 3. 工具调用用 function_call 类型的 output item 表示
+ */
+async function handleResponsesStream(
+    res: Response,
+    cursorReq: CursorChatRequest,
+    body: Record<string, unknown>,
+    anthropicReq: AnthropicRequest,
+): Promise<void> {
+    res.writeHead(200, {
+        'Content-Type': 'text/event-stream',
+        'Cache-Control': 'no-cache',
+        'Connection': 'keep-alive',
+        'X-Accel-Buffering': 'no',
+    });
+
+    const respId = responsesId();
+    const model = (body.model as string) || 'gpt-4';
+    const hasTools = (anthropicReq.tools?.length ?? 0) > 0;
+
+    // 缓冲完整响应再处理（复用 Chat Completions 的逻辑）
+    let fullResponse = '';
+    let activeCursorReq = cursorReq;
+    let retryCount = 0;
+
+    // ★ 流式保活：防止网关 504
+    const keepaliveInterval = setInterval(() => {
+        try {
+            res.write(': keepalive\n\n');
+            if (typeof (res as unknown as { flush: () => void }).flush === 'function') {
+                (res as unknown as { flush: () => void }).flush();
+            }
+        } catch { /* connection already closed */ }
+    }, 15000);
+
+    try {
+        const executeStream = async () => {
+            fullResponse = '';
+            await sendCursorRequest(activeCursorReq, (event: CursorSSEEvent) => {
+                if (event.type !== 'text-delta' || !event.delta) return;
+                fullResponse += event.delta;
+            });
+        };
+
+        await executeStream();
+
+        // Thinking 提取
+        if (fullResponse.includes('<thinking>')) {
+            const { strippedText } = extractThinking(fullResponse);
+            fullResponse = strippedText;
+        }
+
+        // 拒绝检测 + 自动重试
+        const shouldRetryRefusal = () => {
+            if (!isRefusal(fullResponse)) return false;
+            if (hasTools && hasToolCalls(fullResponse)) return false;
+            return true;
+        };
+
+        while (shouldRetryRefusal() && retryCount < MAX_REFUSAL_RETRIES) {
+            retryCount++;
+            const retryBody = buildRetryRequest(anthropicReq, retryCount - 1);
+            activeCursorReq = await convertToCursorRequest(retryBody);
+            await executeStream();
+            if (fullResponse.includes('<thinking>')) {
+                fullResponse = extractThinking(fullResponse).strippedText;
+            }
+        }
+
+        if (shouldRetryRefusal()) {
+            if (isToolCapabilityQuestion(anthropicReq)) {
+                fullResponse = CLAUDE_TOOLS_RESPONSE;
+            } else {
+                fullResponse = CLAUDE_IDENTITY_RESPONSE;
+            }
+        }
+
+        // 清洗响应
+        fullResponse = sanitizeResponse(fullResponse);
+
+        // 计算 usage
+        const inputTokens = estimateInputTokens(anthropicReq);
+        const outputTokens = Math.ceil(fullResponse.length / 3);
+        const usage = { input_tokens: inputTokens, output_tokens: outputTokens, total_tokens: inputTokens + outputTokens };
+
+        // ★ 工具调用解析 + Responses API 格式输出
+        if (hasTools && hasToolCalls(fullResponse)) {
+            const { toolCalls, cleanText } = parseToolCalls(fullResponse);
+
+            if (toolCalls.length > 0) {
+                // 1. response.created + response.in_progress
+                writeResponsesSSE(res, 'response.created', buildResponseObject(respId, model, 'in_progress', []));
+                writeResponsesSSE(res, 'response.in_progress', buildResponseObject(respId, model, 'in_progress', []));
+
+                const allOutputItems: Record<string, unknown>[] = [];
+                let outputIndex = 0;
+
+                // 2. 每个工具调用 → function_call output item
+                for (const tc of toolCalls) {
+                    const callId = toolCallId();
+                    const fcItemId = responsesItemId();
+                    const argsStr = JSON.stringify(tc.arguments);
+
+                    // output_item.added (function_call)
+                    writeResponsesSSE(res, 'response.output_item.added', {
+                        output_index: outputIndex,
+                        item: {
+                            id: fcItemId,
+                            type: 'function_call',
+                            name: tc.name,
+                            call_id: callId,
+                            arguments: '',
+                            status: 'in_progress',
+                        },
+                    });
+
+                    // function_call_arguments.delta — 分块发送
+                    const CHUNK_SIZE = 128;
+                    for (let j = 0; j < argsStr.length; j += CHUNK_SIZE) {
+                        writeResponsesSSE(res, 'response.function_call_arguments.delta', {
+                            output_index: outputIndex,
+                            delta: argsStr.slice(j, j + CHUNK_SIZE),
+                        });
+                    }
+
+                    // function_call_arguments.done
+                    writeResponsesSSE(res, 'response.function_call_arguments.done', {
+                        output_index: outputIndex,
+                        arguments: argsStr,
+                    });
+
+                    // output_item.done (function_call)
+                    const completedFcItem = {
+                        id: fcItemId,
+                        type: 'function_call',
+                        name: tc.name,
+                        call_id: callId,
+                        arguments: argsStr,
+                        status: 'completed',
+                    };
+                    writeResponsesSSE(res, 'response.output_item.done', {
+                        output_index: outputIndex,
+                        item: completedFcItem,
+                    });
+
+                    allOutputItems.push(completedFcItem);
+                    outputIndex++;
+                }
+
+                // 3. 如果有纯文本部分，也发送 message output item
+                let textContent = sanitizeResponse(isRefusal(cleanText) ? '' : cleanText);
+                if (textContent) {
+                    const msgItemId = responsesItemId();
+                    writeResponsesSSE(res, 'response.output_item.added', {
+                        output_index: outputIndex,
+                        item: { id: msgItemId, type: 'message', role: 'assistant', status: 'in_progress', content: [] },
+                    });
+                    writeResponsesSSE(res, 'response.content_part.added', {
+                        output_index: outputIndex, content_index: 0,
+                        part: { type: 'output_text', text: '', annotations: [] },
+                    });
+                    writeResponsesSSE(res, 'response.output_text.delta', {
+                        output_index: outputIndex, content_index: 0, delta: textContent,
+                    });
+                    writeResponsesSSE(res, 'response.output_text.done', {
+                        output_index: outputIndex, content_index: 0, text: textContent,
+                    });
+                    writeResponsesSSE(res, 'response.content_part.done', {
+                        output_index: outputIndex, content_index: 0,
+                        part: { type: 'output_text', text: textContent, annotations: [] },
+                    });
+                    const msgItem = {
+                        id: msgItemId, type: 'message', role: 'assistant', status: 'completed',
+                        content: [{ type: 'output_text', text: textContent, annotations: [] }],
+                    };
+                    writeResponsesSSE(res, 'response.output_item.done', { output_index: outputIndex, item: msgItem });
+                    allOutputItems.push(msgItem);
+                }
+
+                // 4. response.completed — ★ Codex 等待的关键事件
+                writeResponsesSSE(res, 'response.completed', buildResponseObject(respId, model, 'completed', allOutputItems, usage));
+            } else {
+                // 工具调用解析失败（误报）→ 作为纯文本发送
+                const msgItemId = responsesItemId();
+                emitResponsesTextStream(res, respId, msgItemId, model, fullResponse, 0, usage);
+            }
+        } else {
+            // 纯文本响应
+            const msgItemId = responsesItemId();
+            emitResponsesTextStream(res, respId, msgItemId, model, fullResponse, 0, usage);
+        }
+    } catch (err: unknown) {
+        const message = err instanceof Error ? err.message : String(err);
+        // 尝试发送错误后的 response.completed，确保 Codex 不会等待超时
+        try {
+            const errorText = `[Error: ${message}]`;
+            const errorItemId = responsesItemId();
+            writeResponsesSSE(res, 'response.created', buildResponseObject(respId, model, 'in_progress', []));
+            writeResponsesSSE(res, 'response.output_item.added', {
+                output_index: 0,
+                item: { id: errorItemId, type: 'message', role: 'assistant', status: 'in_progress', content: [] },
+            });
+            writeResponsesSSE(res, 'response.content_part.added', {
+                output_index: 0, content_index: 0,
+                part: { type: 'output_text', text: '', annotations: [] },
+            });
+            writeResponsesSSE(res, 'response.output_text.delta', {
+                output_index: 0, content_index: 0, delta: errorText,
+            });
+            writeResponsesSSE(res, 'response.output_text.done', {
+                output_index: 0, content_index: 0, text: errorText,
+            });
+            writeResponsesSSE(res, 'response.content_part.done', {
+                output_index: 0, content_index: 0,
+                part: { type: 'output_text', text: errorText, annotations: [] },
+            });
+            writeResponsesSSE(res, 'response.output_item.done', {
+                output_index: 0,
+                item: { id: errorItemId, type: 'message', role: 'assistant', status: 'completed', content: [{ type: 'output_text', text: errorText, annotations: [] }] },
+            });
+            writeResponsesSSE(res, 'response.completed', buildResponseObject(respId, model, 'completed', [{
+                id: errorItemId, type: 'message', role: 'assistant', status: 'completed',
+                content: [{ type: 'output_text', text: errorText, annotations: [] }],
+            }], { input_tokens: 0, output_tokens: 10, total_tokens: 10 }));
+        } catch { /* ignore double error */ }
+    } finally {
+        clearInterval(keepaliveInterval);
+    }
+
+    res.end();
+}
+
+/**
+ * Responses API 非流式处理
+ */
+async function handleResponsesNonStream(
+    res: Response,
+    cursorReq: CursorChatRequest,
+    body: Record<string, unknown>,
+    anthropicReq: AnthropicRequest,
+): Promise<void> {
+    let fullText = await sendCursorRequestFull(cursorReq);
+    const hasTools = (anthropicReq.tools?.length ?? 0) > 0;
+
+    // Thinking 提取
+    if (fullText.includes('<thinking>')) {
+        fullText = extractThinking(fullText).strippedText;
+    }
+
+    // 拒绝检测 + 重试
+    const shouldRetry = () => isRefusal(fullText) && !(hasTools && hasToolCalls(fullText));
+    if (shouldRetry()) {
+        for (let attempt = 0; attempt < MAX_REFUSAL_RETRIES; attempt++) {
+            const retryBody = buildRetryRequest(anthropicReq, attempt);
+            const retryCursorReq = await convertToCursorRequest(retryBody);
+            fullText = await sendCursorRequestFull(retryCursorReq);
+            if (fullText.includes('<thinking>')) {
+                fullText = extractThinking(fullText).strippedText;
+            }
+            if (!shouldRetry()) break;
+        }
+        if (shouldRetry()) {
+            if (isToolCapabilityQuestion(anthropicReq)) {
+                fullText = CLAUDE_TOOLS_RESPONSE;
+            } else {
+                fullText = CLAUDE_IDENTITY_RESPONSE;
+            }
+        }
+    }
+
+    fullText = sanitizeResponse(fullText);
+
+    const respId = responsesId();
+    const model = (body.model as string) || 'gpt-4';
+    const inputTokens = estimateInputTokens(anthropicReq);
+    const outputTokens = Math.ceil(fullText.length / 3);
+    const usage = { input_tokens: inputTokens, output_tokens: outputTokens, total_tokens: inputTokens + outputTokens };
+
+    const output: Record<string, unknown>[] = [];
+
+    if (hasTools && hasToolCalls(fullText)) {
+        const { toolCalls, cleanText } = parseToolCalls(fullText);
+        for (const tc of toolCalls) {
+            output.push({
+                id: responsesItemId(),
+                type: 'function_call',
+                name: tc.name,
+                call_id: toolCallId(),
+                arguments: JSON.stringify(tc.arguments),
+                status: 'completed',
+            });
+        }
+        const textContent = sanitizeResponse(isRefusal(cleanText) ? '' : cleanText);
+        if (textContent) {
+            output.push({
+                id: responsesItemId(),
+                type: 'message',
+                role: 'assistant',
+                status: 'completed',
+                content: [{ type: 'output_text', text: textContent, annotations: [] }],
+            });
+        }
+    } else {
+        output.push({
+            id: responsesItemId(),
+            type: 'message',
+            role: 'assistant',
+            status: 'completed',
+            content: [{ type: 'output_text', text: fullText, annotations: [] }],
+        });
+    }
+
+    res.json(buildResponseObject(respId, model, 'completed', output, usage));
 }
 
 /**

@@ -1,8 +1,8 @@
-# Cursor2API v2.7.8
+# Vercel Dev Router v2.7.8
 
 > 20260401 Cursor文档页仅剩gemini-3-flash （凉）
 
-将 Cursor 文档页免费 AI 对话接口代理转换为 **Anthropic Messages API** 和 **OpenAI Chat Completions API**，支持 **Claude Code** 和 **Cursor IDE** 使用。
+将 Vercel AI 对话接口代理转换为 **Anthropic Messages API** 和 **OpenAI Chat Completions API**，当前稳定支持 **非流式开发协助** 与 **工具调用**。
 
 > ⭐ **v2.7.8 新特性**：新增上下文压力膨胀（Context Pressure Inflation）、自适应历史预算、工具结果智能截断三大防截断机制，从根源缓解 `max_output_token` 截断问题。全部默认关闭，按需开启。
 
@@ -12,7 +12,7 @@
 ```
 ┌─────────────┐     ┌──────────────┐     ┌──────────────┐
 │ Claude Code  │────▶│              │────▶│              │
-│ (Anthropic)  │     │  cursor2api  │     │  Cursor API  │
+│ (Anthropic)  │     │  vercel-dev-router  │     │  Cursor API  │
 │              │◀────│  (代理+转换)  │◀────│  /api/chat   │
 └─────────────┘     └──────────────┘     └──────────────┘
        ▲                    ▲
@@ -89,7 +89,7 @@ cp config.yaml.example config.yaml
 | `logging.max_days` | 日志保留天数 | `7` |
 | `logging.persist_mode` | 日志落盘模式：`summary` 问答摘要 / `compact` 精简 / `full` 完整 | `summary` |
 | `logging.db_enabled` | SQLite 持久化（推荐，解决大文件 OOM） | `false` |
-| `logging.db_path` | SQLite 文件路径 | `./logs/cursor2api.db` |
+| `logging.db_path` | SQLite 文件路径 | `./logs/vercel-dev-router.db` |
 | `max_auto_continue` | Anthropic 路径的截断自动续写次数（`0`=禁用，交由客户端续写；OpenAI 兼容长工具调用仍会保底做 1 次内部恢复） | `0` |
 | `max_history_messages` | 历史消息条数上限，超出时删除最早消息（建议改用 `max_history_tokens`） | `-1`（不限制） |
 | `max_history_tokens` | 历史消息 token 数上限（推荐），代码自动补偿 Cursor 后端开销（1,300 基础 + 工具 tokenizer 差异），示例推荐值 `120000`，参考值 `110000~130000` | `120000` |
@@ -137,7 +137,7 @@ OPENAI_BASE_URL=https://your-domain.example.com/v1
 
 > ⚠️ **注意 1**：Cursor IDE 这里通常需要 **Cursor Pro 会员** 才能正常使用自定义模型 / Base URL。
 >
-> ⚠️ **注意 2**：`OPENAI_BASE_URL` 需要填写 **公网可访问的域名地址**，建议使用 HTTPS 反向代理到你的 `cursor2api` 服务；直接填写 `http://localhost:3010/v1` 或局域网地址，通常无法在 Cursor IDE 中正常使用。
+> ⚠️ **注意 2**：`OPENAI_BASE_URL` 需要填写 **公网可访问的域名地址**，建议使用 HTTPS 反向代理到你的 `vercel-dev-router` 服务；直接填写 `http://localhost:3010/v1` 或局域网地址，通常无法在 Cursor IDE 中正常使用。
 >
 > ⚠️ **注意 3**：Cursor IDE 请优先选用 Claude 模型名（通过 `/v1/models` 查看），避免使用 GPT 模型名以获得最佳兼容。
 
@@ -168,7 +168,7 @@ http://localhost:3010/logs?token=sk-your-secret-token-1
 ## 项目结构
 
 ```
-cursor2api/
+vercel-dev-router/
 ├── src/
 │   ├── index.ts            # 入口 + Express 服务 + 路由 + API 鉴权中间件
 │   ├── config.ts           # 配置管理（含 auth_tokens / vision.proxy）

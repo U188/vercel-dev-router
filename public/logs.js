@@ -1,9 +1,9 @@
-// Cursor2API Log Viewer v4 - Client JS
+// Vercel Dev Router Log Viewer v4 - Client JS
 
 // ===== Theme Toggle =====
 function getTheme(){return document.documentElement.getAttribute('data-theme')||'light'}
 function applyThemeIcon(){const btn=document.getElementById('themeToggle');if(btn)btn.textContent=getTheme()==='dark'?'☀️':'🌙'}
-function toggleTheme(){const t=getTheme()==='dark'?'light':'dark';document.documentElement.setAttribute('data-theme',t);localStorage.setItem('cursor2api_theme',t);applyThemeIcon()}
+function toggleTheme(){const t=getTheme()==='dark'?'light':'dark';document.documentElement.setAttribute('data-theme',t);localStorage.setItem('vercel-dev-router_theme',t);applyThemeIcon()}
 applyThemeIcon();
 
 let reqs=[],rmap={},logs=[],selId=null,cFil='all',cLv='all',sq='',curTab='logs',curPayload=null,timeFil='all';
@@ -11,15 +11,15 @@ const PC={receive:'var(--blue)',convert:'var(--cyan)',send:'var(--purple)',respo
 
 // ===== Token Auth =====
 const urlToken = new URLSearchParams(window.location.search).get('token');
-if (urlToken) localStorage.setItem('cursor2api_token', urlToken);
-const authToken = localStorage.getItem('cursor2api_token') || '';
+if (urlToken) localStorage.setItem('vercel-dev-router_token', urlToken);
+const authToken = localStorage.getItem('vercel-dev-router_token') || '';
 function authQ(base) { return authToken ? (base.includes('?') ? base + '&token=' : base + '?token=') + encodeURIComponent(authToken) : base; }
 function logoutBtn() {
   if (authToken) {
     const b = document.createElement('button');
     b.textContent = '退出';
     b.className = 'hdr-btn';
-    b.onclick = () => { localStorage.removeItem('cursor2api_token'); window.location.href = '/logs'; };
+    b.onclick = () => { localStorage.removeItem('vercel-dev-router_token'); window.location.href = '/logs'; };
     document.querySelector('.hdr-r').prepend(b);
   }
 }
@@ -28,7 +28,7 @@ function logoutBtn() {
 async function init(){
   try{
     const[a,b]=await Promise.all([fetch(authQ('/api/requests?limit=100')),fetch(authQ('/api/logs?limit=500'))]);
-    if (a.status === 401) { localStorage.removeItem('cursor2api_token'); window.location.href = '/logs'; return; }
+    if (a.status === 401) { localStorage.removeItem('vercel-dev-router_token'); window.location.href = '/logs'; return; }
     reqs=await a.json();logs=await b.json();rmap={};reqs.forEach(r=>rmap[r.requestId]=r);
     renderRL();updCnt();updStats();
     // 默认显示实时日志流

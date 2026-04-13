@@ -181,7 +181,7 @@ function getLogFilePath(): string | null {
     const dir = getLogDir();
     if (!dir) return null;
     const date = new Date().toISOString().slice(0, 10); // YYYY-MM-DD
-    return join(dir, `cursor2api-${date}.jsonl`);
+    return join(dir, `vercel-dev-router-${date}.jsonl`);
 }
 
 function ensureLogDir(): void {
@@ -535,7 +535,7 @@ export function loadLogsFromFiles(): void {
             const maxDays = cfg.logging?.max_days || 7;
             const cutoff = Date.now() - maxDays * 86400000;
             // 初始化 SQLite（若尚未在 index.ts 中初始化则在此兜底）
-            try { initDb(cfg.logging.db_path || './logs/cursor2api.db'); } catch { /* already initialized */ }
+            try { initDb(cfg.logging.db_path || './logs/vercel-dev-router.db'); } catch { /* already initialized */ }
             const summaries = dbGetSummariesSince(cutoff);
             let dbLoaded = 0;
             for (const s of summaries) {
@@ -568,12 +568,12 @@ export function loadLogsFromFiles(): void {
         const cutoff = Date.now() - maxDays * 86400000;
 
         const files = readdirSync(dir)
-            .filter(f => f.startsWith('cursor2api-') && f.endsWith('.jsonl'))
+            .filter(f => f.startsWith('vercel-dev-router-') && f.endsWith('.jsonl'))
             .sort(); // 按日期排序
 
         // 清理过期文件
         for (const f of files) {
-            const dateStr = f.replace('cursor2api-', '').replace('.jsonl', '');
+            const dateStr = f.replace('vercel-dev-router-', '').replace('.jsonl', '');
             const fileDate = new Date(dateStr).getTime();
             if (fileDate < cutoff) {
                 try { unlinkSync(join(dir, f)); } catch { /* ignore */ }
@@ -585,7 +585,7 @@ export function loadLogsFromFiles(): void {
         if (!cfg.logging?.db_enabled) {
             // 加载有效文件（最多最近2个文件）
             const validFiles = readdirSync(dir)
-                .filter(f => f.startsWith('cursor2api-') && f.endsWith('.jsonl'))
+                .filter(f => f.startsWith('vercel-dev-router-') && f.endsWith('.jsonl'))
                 .sort()
                 .slice(-2);
 
@@ -633,7 +633,7 @@ onConfigReload((newCfg, changes) => {
     if (!changes.some(c => c.startsWith('logging'))) return;
 
     const dbEnabled = newCfg.logging?.db_enabled ?? false;
-    const dbPath = newCfg.logging?.db_path || './logs/cursor2api.db';
+    const dbPath = newCfg.logging?.db_path || './logs/vercel-dev-router.db';
 
     if (dbEnabled) {
         // 启用或路径变更：重新初始化（initDb 内部会先关闭旧连接）
@@ -665,7 +665,7 @@ export function clearAllLogs(): { cleared: number } {
     const dir = getLogDir();
     if (dir && existsSync(dir)) {
         try {
-            const files = readdirSync(dir).filter(f => f.startsWith('cursor2api-') && f.endsWith('.jsonl'));
+            const files = readdirSync(dir).filter(f => f.startsWith('vercel-dev-router-') && f.endsWith('.jsonl'));
             for (const f of files) {
                 try { unlinkSync(join(dir, f)); } catch { /* ignore */ }
             }

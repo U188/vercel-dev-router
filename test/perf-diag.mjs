@@ -181,7 +181,7 @@ async function proxyTest(prompt) {
 
 // ─── 主流程 ──────────────────────────────────────────────────
 console.log(`\n${C.bold}${C.magenta}  ╔═══════════════════════════════════════════════════╗${C.reset}`);
-console.log(`${C.bold}${C.magenta}  ║   Cursor2API 公平性能对比                       ║${C.reset}`);
+console.log(`${C.bold}${C.magenta}  ║   Vercel Dev Router 公平性能对比                       ║${C.reset}`);
 console.log(`${C.bold}${C.magenta}  ╚═══════════════════════════════════════════════════╝${C.reset}\n`);
 
 const testCases = [

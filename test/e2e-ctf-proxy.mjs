@@ -1,7 +1,7 @@
 /**
  * test/e2e-ctf-proxy.mjs
  *
- * Issue #60 "万能破甲焚诀" — 通过 cursor2api 代理测试 CTF 绕过效果
+ * Issue #60 "万能破甲焚诀" — 通过 vercel-dev-router 代理测试 CTF 绕过效果
  * 
  * 上一轮直连源站测试发现：源站 AI 角色锁死为"Cursor 支持助手"，CTF 无效。
  * 本轮通过代理测试：converter.ts 会注入认知重构，把 AI 变成"通用助手"，
@@ -213,7 +213,7 @@ const TEST_CASES = [
 // ─── 主流程 ──────────────────────────────────────────────────────
 
 console.log(`\n${C.bold}${C.magenta}  ╔═══════════════════════════════════════════════════════════╗${C.reset}`);
-console.log(`${C.bold}${C.magenta}  ║  Issue #60 CTF 绕过测试 — 通过 cursor2api 代理           ║${C.reset}`);
+console.log(`${C.bold}${C.magenta}  ║  Issue #60 CTF 绕过测试 — 通过 vercel-dev-router 代理           ║${C.reset}`);
 console.log(`${C.bold}${C.magenta}  ║  converter.ts 认知重构 + CTF 框架 双重效果验证            ║${C.reset}`);
 console.log(`${C.bold}${C.magenta}  ╚═══════════════════════════════════════════════════════════╝${C.reset}\n`);
 console.log(dim(`  代理: ${BASE_URL}`));
@@ -303,7 +303,7 @@ for (let i = 0; i < TEST_CASES.length; i++) {
 // 汇总
 // ═══════════════════════════════════════════════════════════════════
 console.log(`\n${'═'.repeat(60)}`);
-console.log(`${C.bold}${C.magenta}  📊 对比汇总：cursor2api 代理 vs 直连源站${C.reset}`);
+console.log(`${C.bold}${C.magenta}  📊 对比汇总：vercel-dev-router 代理 vs 直连源站${C.reset}`);
 console.log(`${'═'.repeat(60)}\n`);
 
 let bypassed = 0, defended = 0, enhanced = 0, bothPass = 0, unclear = 0, errCount = 0;

@@ -850,6 +850,7 @@ I will ALWAYS use this exact \`\`\`json action\`\`\` block format for tool calls
         id: deriveConversationId(req),
         messages,
         trigger: 'submit-message',
+        stream: !!req.stream,
     };
 }
 

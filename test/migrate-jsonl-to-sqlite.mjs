@@ -3,10 +3,10 @@
  * test/migrate-jsonl-to-sqlite.mjs
  *
  * 将现有 JSONL 日志文件迁移到 SQLite 数据库。
- * 运行方式：node test/migrate-jsonl-to-sqlite.mjs [--db ./logs/cursor2api.db] [--dir ./logs] [--dry-run]
+ * 运行方式：node test/migrate-jsonl-to-sqlite.mjs [--db ./logs/vercel-dev-router.db] [--dir ./logs] [--dry-run]
  *
  * 选项：
- *   --db <path>      SQLite 文件路径（默认 ./logs/cursor2api.db）
+ *   --db <path>      SQLite 文件路径（默认 ./logs/vercel-dev-router.db）
  *   --dir <path>     JSONL 日志目录（默认 ./logs）
  *   --dry-run        只统计不写入
  *   --clear          写入前清空数据库已有数据
@@ -23,7 +23,7 @@ function getArg(name) {
     const idx = args.indexOf(name);
     return idx >= 0 ? args[idx + 1] : null;
 }
-const DB_PATH = getArg('--db') || './logs/cursor2api.db';
+const DB_PATH = getArg('--db') || './logs/vercel-dev-router.db';
 const LOG_DIR = getArg('--dir') || './logs';
 const DRY_RUN = args.includes('--dry-run');
 const CLEAR = args.includes('--clear');
@@ -43,7 +43,7 @@ if (!existsSync(LOG_DIR)) {
 }
 
 const jsonlFiles = readdirSync(LOG_DIR)
-    .filter(f => f.startsWith('cursor2api-') && f.endsWith('.jsonl'))
+    .filter(f => f.startsWith('vercel-dev-router-') && f.endsWith('.jsonl'))
     .sort();
 
 if (jsonlFiles.length === 0) {

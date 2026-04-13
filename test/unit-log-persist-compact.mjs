@@ -8,7 +8,7 @@
 import fs from 'fs';
 import path from 'path';
 
-const LOG_DIR = '/tmp/cursor2api-log-compact';
+const LOG_DIR = '/tmp/vercel-dev-router-log-compact';
 process.env.LOG_FILE_ENABLED = '1';
 process.env.LOG_DIR = LOG_DIR;
 process.env.LOG_PERSIST_MODE = 'compact';

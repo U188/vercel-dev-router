@@ -50,7 +50,7 @@ function assertEq(actual, expected, msg) {
 // ==================== 内联实现（与 src/logger-db.ts 保持同步）====================
 // 使用相同逻辑直接操作 better-sqlite3，不依赖 dist/
 
-const TEST_DB_PATH = '/tmp/cursor2api-test.db';
+const TEST_DB_PATH = '/tmp/vercel-dev-router-test.db';
 
 // 清理旧测试数据库
 if (existsSync(TEST_DB_PATH)) unlinkSync(TEST_DB_PATH);

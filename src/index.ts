@@ -1,5 +1,5 @@
 /**
- * Cursor2API v2 - 入口
+ * Vercel Dev Router v2 - 入口
  *
  * 将 Cursor 文档页免费 AI 接口代理为 Anthropic Messages API
  * 通过提示词注入让 Claude Code 拥有完整工具调用能力
@@ -132,7 +132,7 @@ app.get('/health', (_req, res) => {
 // 根路径
 app.get('/', (_req, res) => {
     res.json({
-        name: 'cursor2api',
+        name: 'vercel-dev-router',
         version: VERSION,
         description: 'Cursor Docs AI → Anthropic & OpenAI & Cursor IDE API Proxy',
         endpoints: {
@@ -156,7 +156,7 @@ app.get('/', (_req, res) => {
 
 // ★ 初始化 SQLite（若启用）
 if (config.logging?.db_enabled) {
-    initDb(config.logging.db_path || './logs/cursor2api.db');
+    initDb(config.logging.db_path || './logs/vercel-dev-router.db');
 }
 
 // ★ 从日志文件加载历史（必须在 listen 之前）
@@ -166,7 +166,7 @@ app.listen(config.port, () => {
     const auth = config.authTokens?.length ? `${config.authTokens.length} token(s)` : 'open';
     const logParts: string[] = [];
     if (config.logging?.file_enabled) logParts.push(`file(${config.logging.persist_mode || 'summary'}) → ${config.logging.dir}`);
-    if (config.logging?.db_enabled) logParts.push(`sqlite → ${config.logging.db_path || './logs/cursor2api.db'}`);
+    if (config.logging?.db_enabled) logParts.push(`sqlite → ${config.logging.db_path || './logs/vercel-dev-router.db'}`);
     const logPersist = logParts.length > 0 ? logParts.join(' + ') : 'memory only';
     
     // Tools 配置摘要
@@ -188,7 +188,7 @@ app.listen(config.port, () => {
     }
     
     console.log('');
-    console.log(`  \x1b[36m⚡ Cursor2API v${VERSION}\x1b[0m`);
+    console.log(`  \x1b[36m⚡ Vercel Dev Router v${VERSION}\x1b[0m`);
     console.log(`  ├─ Server:  \x1b[32mhttp://localhost:${config.port}\x1b[0m`);
     console.log(`  ├─ Model:   ${config.cursorModel}`);
     console.log(`  ├─ Auth:    ${auth}`);

@@ -8,7 +8,7 @@
 import fs from 'fs';
 import path from 'path';
 
-const LOG_DIR = '/tmp/cursor2api-openai-log-persistence';
+const LOG_DIR = '/tmp/vercel-dev-router-openai-log-persistence';
 process.env.LOG_FILE_ENABLED = '1';
 process.env.LOG_DIR = LOG_DIR;
 

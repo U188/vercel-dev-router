@@ -135,7 +135,7 @@ async function checkServer() {
 // ════════════════════════════════════════════════════════════════════
 // 主测试
 // ════════════════════════════════════════════════════════════════════
-console.log(`\n${C.bold}${C.magenta}  Cursor2API E2E 测试套件${C.reset}`);
+console.log(`\n${C.bold}${C.magenta}  Vercel Dev Router E2E 测试套件${C.reset}`);
 console.log(dim(`  服务器: ${BASE_URL}  |  模型: ${MODEL}`));
 
 const online = await checkServer();

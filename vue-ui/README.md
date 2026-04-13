@@ -1,4 +1,4 @@
-# cursor2api Vue3 日志 UI
+# vercel-dev-router Vue3 日志 UI
 
 基于 Vue3 + Vite + TypeScript 构建的日志查看与配置前端，挂载在 `/vuelogs` 路由下。
 

@@ -2,7 +2,7 @@
   <div class="login-overlay">
     <div class="login-card">
       <div class="logo">
-        <h1>⚡ Cursor2API</h1>
+        <h1>⚡ Vercel Dev Router</h1>
         <p>日志查看器需要验证身份</p>
       </div>
       <form @submit.prevent="submit">

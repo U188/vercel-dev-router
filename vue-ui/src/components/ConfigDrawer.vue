@@ -98,7 +98,7 @@
                 <Toggle v-model="draft.logging.db_enabled" />
               </Field>
               <template v-if="draft.logging.db_enabled">
-                <Field label="logging.db_path" desc="SQLite 文件路径，默认 ./logs/cursor2api.db。Docker 部署请确保 logs 目录已挂载">
+                <Field label="logging.db_path" desc="SQLite 文件路径，默认 ./logs/vercel-dev-router.db。Docker 部署请确保 logs 目录已挂载">
                   <input v-model="draft.logging.db_path" type="text" class="inp inp-wide" />
                 </Field>
               </template>

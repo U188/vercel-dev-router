@@ -1,10 +1,10 @@
 services:
-  cursor2api:
+  vercel-dev-router:
     build:
       context: .
       dockerfile: Dockerfile
-    image: cursor2api:latest
-    container_name: cursor2api
+    image: vercel-dev-router:latest
+    container_name: vercel-dev-router
     restart: unless-stopped
     ports:
       - "3010:3010"
@@ -47,7 +47,7 @@ services:
       # - LOG_DIR=./logs
       # 方式二：SQLite（推荐，避免大文件 OOM，支持重启后历史查询）
       # - LOG_DB_ENABLED=true
-      # - LOG_DB_PATH=./logs/cursor2api.db
+      # - LOG_DB_PATH=./logs/vercel-dev-router.db
 
       # ── 浏览器指纹（base64 JSON） ──
       # - FP=eyJ1c2VyQWdlbnQiOiIuLi4ifQ==

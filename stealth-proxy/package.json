@@ -1,5 +1,5 @@
 {
-  "name": "cursor2api-stealth-proxy",
+  "name": "vercel-dev-router-stealth-proxy",
   "version": "1.0.0",
   "description": "Stealth browser proxy for bypassing Vercel Bot Protection",
   "main": "index.js",

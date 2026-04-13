@@ -1,7 +1,7 @@
 <template>
   <header class="app-header">
     <div class="header-left">
-      <h1><span class="ic">⚡</span> Cursor2API 日志</h1>
+      <h1><span class="ic">⚡</span> Vercel Dev Router 日志</h1>
     </div>
     <div class="header-center">
       <div class="stats-pills">
@@ -68,7 +68,7 @@ async function onLogout() {
 const isDark = ref(false);
 
 onMounted(() => {
-  isDark.value = (localStorage.getItem('cursor2api_theme') ?? 'light') === 'dark';
+  isDark.value = (localStorage.getItem('vercel_dev_router_theme') ?? 'light') === 'dark';
   applyTheme();
 });
 
@@ -78,7 +78,7 @@ function applyTheme() {
 
 function toggleTheme() {
   isDark.value = !isDark.value;
-  localStorage.setItem('cursor2api_theme', isDark.value ? 'dark' : 'light');
+  localStorage.setItem('vercel_dev_router_theme', isDark.value ? 'dark' : 'light');
   applyTheme();
 }
 

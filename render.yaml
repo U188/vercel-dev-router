@@ -1,6 +1,6 @@
 services:
   - type: web
-    name: cursor2api
+    name: vercel-dev-router
     runtime: docker
     dockerfilePath: ./Dockerfile
     region: singapore

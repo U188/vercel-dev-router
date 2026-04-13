@@ -3,7 +3,7 @@ import { useAuthStore } from './stores/auth';
 import { getActivePinia } from 'pinia';
 
 function getAuthHeader(): Record<string, string> {
-  const token = localStorage.getItem('cursor2api_token');
+  const token = localStorage.getItem('vercel_dev_router_token');
   return token ? { Authorization: `Bearer ${token}` } : {};
 }
 
@@ -91,7 +91,7 @@ export function fetchMoreRequests(filter: RequestsFilter = {}): Promise<Requests
 }
 
 export function createSSEConnection(onMessage: (event: string, data: unknown) => void): EventSource {
-  const token = localStorage.getItem('cursor2api_token');
+  const token = localStorage.getItem('vercel_dev_router_token');
   const url = token ? `/api/logs/stream?token=${encodeURIComponent(token)}` : '/api/logs/stream';
   const es = new EventSource(url);
   es.onmessage = (e) => {

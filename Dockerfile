@@ -32,7 +32,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends wget && rm -rf 
 RUN groupadd --system --gid 1001 nodejs && \
     useradd --system --uid 1001 --gid nodejs cursor
 
-# ── cursor2api 主服务依赖 ──
+# ── vercel-dev-router 主服务依赖 ──
 COPY package.json package-lock.json ./
 RUN npm ci --omit=dev \
     && npm cache clean --force
@@ -71,5 +71,5 @@ USER cursor
 EXPOSE 3010
 VOLUME ["/app/logs"]
 
-# 启动服务（通过 start.sh 统一管理 stealth-proxy + cursor2api）
+# 启动服务（通过 start.sh 统一管理 stealth-proxy + vercel-dev-router）
 CMD ["./start.sh"]

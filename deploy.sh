@@ -2,7 +2,7 @@
 set -e
 
 echo "=========================================="
-echo "    Cursor2API Linux 一键部署服务包"
+echo "    Vercel Dev Router Linux 一键部署服务包"
 echo "=========================================="
 echo "正在检测 Linux 环境并开始部署..."
 
@@ -46,12 +46,12 @@ npm run build
 
 # 4. 配置 PM2 进程
 echo "[项目部署] 正在清理旧的 PM2 进程（如果有的话）..."
-pm2 delete cursor2api 2>/dev/null || true
+pm2 delete vercel-dev-router 2>/dev/null || true
 
 # 5. 启动项目
 echo "[项目部署] 使用 PM2 守护进程启动服务..."
 # 设置生产环境变量
-NODE_ENV=production pm2 start dist/index.js --name "cursor2api" 
+NODE_ENV=production pm2 start dist/index.js --name "vercel-dev-router" 
 
 # 6. 保存并且处理自启
 echo "[项目部署] 配置 PM2 保存以便意外重启后恢复..."
@@ -61,7 +61,7 @@ echo "=========================================="
 echo "部署与运行全部完成！🚀"
 echo ""
 echo "常用 PM2 管理命令："
-echo "▶ 查看运行日志：  pm2 logs cursor2api"
+echo "▶ 查看运行日志：  pm2 logs vercel-dev-router"
 echo "▶ 查看进程监控：  pm2 monit"
-echo "▶ 重启服务：      pm2 restart cursor2api"
+echo "▶ 重启服务：      pm2 restart vercel-dev-router"
 echo "=========================================="

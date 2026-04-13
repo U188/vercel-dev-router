@@ -1,5 +1,5 @@
 #!/bin/sh
-# 本地开发：先启动 stealth-proxy，等就绪后再启动 cursor2api
+# 本地开发：先启动 stealth-proxy，等就绪后再启动 vercel-dev-router
 
 # 启动 stealth-proxy（后台）
 node stealth-proxy/index.js &
@@ -18,5 +18,5 @@ done
 # 捕获退出信号，同时杀掉 stealth-proxy
 trap "kill $STEALTH_PID 2>/dev/null; exit 0" TERM INT
 
-# 启动 cursor2api
+# 启动 vercel-dev-router
 STEALTH_PROXY=http://127.0.0.1:3011 npx tsx watch src/index.ts

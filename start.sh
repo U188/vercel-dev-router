@@ -2,8 +2,8 @@
 set -e
 
 # ==================== All-in-One Entrypoint ====================
-# 当 ENABLE_STEALTH=true 时，先启动内置 stealth-proxy，再启动 cursor2api
-# 否则仅启动 cursor2api
+# 当 ENABLE_STEALTH=true 时，先启动内置 stealth-proxy，再启动 vercel-dev-router
+# 否则仅启动 vercel-dev-router
 
 if [ "$ENABLE_STEALTH" = "true" ]; then
     echo "[Entrypoint] ENABLE_STEALTH=true, starting stealth-proxy on port 3011..."
@@ -26,7 +26,7 @@ if [ "$ENABLE_STEALTH" = "true" ]; then
     if [ "$READY" = "true" ]; then
         echo "[Entrypoint] stealth-proxy is ready!"
     else
-        echo "[Entrypoint] WARNING: stealth-proxy did not become ready in 60s, starting cursor2api anyway..."
+        echo "[Entrypoint] WARNING: stealth-proxy did not become ready in 60s, starting vercel-dev-router anyway..."
     fi
 
     # 自动设置 STEALTH_PROXY 环境变量（如果用户未手动指定）
@@ -37,8 +37,8 @@ if [ "$ENABLE_STEALTH" = "true" ]; then
     # 捕获信号，优雅退出时同时终止 stealth-proxy
     trap "kill $STEALTH_PID 2>/dev/null; exit 0" TERM INT
 
-    # 启动 cursor2api（前台）
-    echo "[Entrypoint] Starting cursor2api with STEALTH_PROXY=$STEALTH_PROXY"
+    # 启动 vercel-dev-router（前台）
+    echo "[Entrypoint] Starting vercel-dev-router with STEALTH_PROXY=$STEALTH_PROXY"
     node /app/dist/index.js &
     MAIN_PID=$!
 
@@ -46,6 +46,6 @@ if [ "$ENABLE_STEALTH" = "true" ]; then
     wait $MAIN_PID $STEALTH_PID 2>/dev/null || true
     exit 0
 else
-    # 普通模式：直接启动 cursor2api
+    # 普通模式：直接启动 vercel-dev-router
     exec node /app/dist/index.js
 fi

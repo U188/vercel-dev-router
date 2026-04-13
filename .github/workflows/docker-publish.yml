@@ -33,6 +33,6 @@ jobs:
           context: .
           platforms: linux/amd64
           push: true
-          tags: ghcr.io/baskduan/cursor2api:latest
+          tags: ghcr.io/baskduan/vercel-dev-router:latest
           cache-from: type=gha
           cache-to: type=gha,mode=max

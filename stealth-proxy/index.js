@@ -2,7 +2,7 @@
  * Stealth Proxy - 通过无头浏览器绕过 Vercel Bot Protection
  *
  * 架构：
- *   客户端 → cursor2api → stealth-proxy → (Chrome浏览器上下文) → cursor.com/api/chat
+ *   客户端 → vercel-dev-router → stealth-proxy → (Chrome浏览器上下文) → cursor.com/api/chat
  *
  * 原理：
  *   1. 启动时用 stealth 浏览器访问 cursor.com，通过 JS Challenge 获取 _vcrcs cookie

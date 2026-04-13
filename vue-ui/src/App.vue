@@ -37,7 +37,7 @@ const sseConnected = ref(false);
 const configDrawerVisible = ref(false);
 
 // 初始化主题（避免闪烁）
-const savedTheme = localStorage.getItem('cursor2api_theme') ?? 'light';
+const savedTheme = localStorage.getItem('vercel_dev_router_theme') ?? 'light';
 document.documentElement.setAttribute('data-theme', savedTheme);
 
 const { connect: connectSSE, disconnect: disconnectSSE } = useSSE((connected) => { sseConnected.value = connected; });
